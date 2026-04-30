@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>かくし文字さがし（単語さがし）</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background-image: url('bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-color: #000;
+    font-family: 'Hiragino Maru Gothic ProN', 'メイリオ', sans-serif;
+    color: white;
+    user-select: none;
+    -webkit-user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+  }
+
+  #header {
+    width: 100%;
+    padding: 15px 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10;
+  }
+
+  /* 隠された言葉を表示するエリア */
+  #word-display {
+    font-size: 40px;
+    font-weight: bold;
+    letter-spacing: 15px;
+    color: #ffd700;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 2px 2px 4px rgba(0,0,0,1);
+    margin-bottom: 5px;
+  }
+
+  #timer-display {
+    font-size: 20px;
+    font-weight: bold;
+    color: #b3d4ff;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+  }
+
+  #sky-area {
+    position: relative;
+    width: 90vw;
+    height: 90vw;
+    max-width: 450px;
+    max-height: 450px;
+    margin-top: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.8), 0 0 30px rgba(255,255,255,0.1);
+  }
+
+  .star {
+    position: absolute;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  @keyframes twinkle {
+    0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  }
+
+  #choices-area {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: auto;
+    margin-bottom: 30px;
+    padding: 0 15px;
+    box-sizing: border-box;
+  }
+
+  .choice-btn {
+    flex: 1;
+    padding: 15px 0;
+    font-size: 32px;
+    font-weight: bold;
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.5);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: all 0.2s;
+    backdrop-filter: blur(3px);
+  }
+  .choice-btn:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  #mark-overlay {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 200px;
+    font-weight: bold;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 50;
+    transition: opacity 0.2s;
+  }
+
+  .screen {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    backdrop-filter: blur(5px);
+  }
+  h1 { font-size: 45px; text-shadow: 0 0 15px #fff; text-align: center; color: #ffd700; margin-bottom: 10px; }
+  p { font-size: 20px; text-align: center; margin-bottom: 40px; line-height: 1.6; }
+  .start-btn {
+    padding: 15px 50px; font-size: 28px; border-radius: 40px; border: none;
+    background: linear-gradient(45deg, #00c6ff, #0072ff);
+    color: white; font-weight: bold; cursor: pointer;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.6);
+    border: 1px solid #fff;
+  }
+  
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+  .shake { animation: shake 0.3s; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="word-display">〇〇〇〇</div>
+  <div id="timer-display">タイム: <span id="time">0</span>秒</div>
+</div>
+
+<div id="sky-area"></div>
+
+<div id="choices-area"></div>
+
+<div id="mark-overlay"></div>
+
+<div id="start-screen" class="screen">
+  <h1>かくし言葉さがし</h1>
+  <p>星空に言葉がかくれているよ。<br>1文字ずつ当てて、言葉を完成させよう！</p>
+  <button id="start-btn" class="start-btn">スタート！</button>
+</div>
+
+<div id="end-screen" class="screen hidden">
+  <h1>大正解！</h1>
+  <p>かくれていた言葉は<br><span id="final-word" style="font-size:45px; color:#ffd700; font-weight:bold;">ほしぞら</span><br>でした！</p>
+  <p>クリアタイム: <span id="final-time" style="color:#00ffcc; font-size:30px;">0</span>秒</p>
+  <button id="restart-btn" class="start-btn">つぎの言葉へ</button>
+</div>
+
+<script>
+  // 出題される言葉のリスト
+  const wordList = ['ほしぞら', 'たいよう', 'ぎんが', 'みかづき', 'すいせい', 'よぞら', 'はなび'];
+  // ダミー用のひらがなリスト
+  const dummyKanaList = ['あ','い','う','え','お','か','き','く','け','こ','さ','し','す','せ','そ','た','ち','つ','て','と','な','に','ぬ','ね','の','は','ひ','ふ','へ','ほ','ま','み','む','め','も','や','ゆ','よ','ら','り','る','れ','ろ','わ','ん'];
+  
+  let timeElapsed = 0;
+  let timerInterval;
+  let isPlaying = false;
+  
+  let currentWord = '';
+  let currentLetterIndex = 0;
+
+  const timeEl = document.getElementById('time');
+  const wordDisplayEl = document.getElementById('word-display');
+  const skyArea = document.getElementById('sky-area');
+  const choicesArea = document.getElementById('choices-area');
+  const markOverlay = document.getElementById('mark-overlay');
+  const startScreen = document.getElementById('start-screen');
+  const endScreen = document.getElementById('end-screen');
+
+  document.getElementById('start-btn').addEventListener('click', startGame);
+  document.getElementById('restart-btn').addEventListener('click', startGame);
+
+  function startGame() {
+    timeElapsed = 0;
+    timeEl.textContent = timeElapsed;
+    startScreen.classList.add('hidden');
+    endScreen.classList.add('hidden');
+    isPlaying = true;
+
+    // 言葉をランダムに選ぶ
+    currentWord = wordList[Math.floor(Math.random() * wordList.length)];
+    currentLetterIndex = 0;
+    updateWordDisplay();
+
+    nextLetter();
+
+    // カウントアップタイマー
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeElapsed++;
+      timeEl.textContent = timeElapsed;
+    }, 1000);
+  }
+
+  function updateWordDisplay() {
+    let displayStr = '';
+    for(let i = 0; i < currentWord.length; i++) {
+      if(i < currentLetterIndex) {
+        displayStr += currentWord[i];
+      } else {
+        displayStr += '〇';
+      }
+    }
+    wordDisplayEl.textContent = displayStr;
+  }
+
+  function nextLetter() {
+    if (!isPlaying) return;
+    
+    // 全文字正解したかチェック
+    if (currentLetterIndex >= currentWord.length) {
+      endGame();
+      return;
+    }
+
+    const targetChar = currentWord[currentLetterIndex];
+    drawConstellation(targetChar);
+    createChoices(targetChar);
+  }
+
+  function drawConstellation(char) {
+    skyArea.innerHTML = '';
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const size = 300;
+    canvas.width = size;
+    canvas.height = size;
+    
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, size, size);
+    
+    // 少し太くして分かりやすくする
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 25; 
+    ctx.lineJoin = "round";
+    ctx.font = 'bold 220px "Hiragino Maru Gothic ProN", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeText(char, size / 2, size / 2);
+
+    const imgData = ctx.getImageData(0, 0, size, size).data;
+    const step = 15;
+
+    // 正解の星を配置
+    for (let y = 0; y < size; y += step) {
+      for (let x = 0; x < size; x += step) {
+        if (imgData[(y * size + x) * 4] < 128) {
+          // 星を多めに配置して形をはっきりさせる
+          if (Math.random() > 0.1) {
+            const jitterX = (Math.random() - 0.5) * 10;
+            const jitterY = (Math.random() - 0.5) * 10;
+            createRealStar(x + jitterX, y + jitterY, size, true);
+          }
+        }
+      }
+    }
+
+    // ダミーの星を減らして優しくする（150個 → 60個）
+    for (let i = 0; i < 60; i++) {
+      createRealStar(Math.random() * size, Math.random() * size, size, false);
+    }
+  }
+
+  function createRealStar(x, y, baseSize, isTarget) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    
+    star.style.left = `${(x / baseSize) * 100}%`;
+    star.style.top = `${(y / baseSize) * 100}%`;
+    
+    // 正解の星は少し黄色っぽく、ダミーは青白っぽくしてヒントにする
+    const colorsTarget = ['#ffed4a', '#ffe066', '#ffffff'];
+    const colorsDummy = ['#ffffff', '#e6f2ff', '#b3d4ff'];
+    const color = isTarget ? colorsTarget[Math.floor(Math.random() * colorsTarget.length)] : colorsDummy[Math.floor(Math.random() * colorsDummy.length)];
+    
+    // 正解の星は少し大きくする
+    const starSize = isTarget ? (Math.random() * 5 + 4) : (Math.random() * 3 + 2);
+    
+    star.style.width = `${starSize}px`;
+    star.style.height = `${starSize}px`;
+    star.style.backgroundColor = color;
+    star.style.boxShadow = `0 0 ${starSize * 2}px ${color}`;
+    
+    const animDuration = Math.random() * 1.5 + 0.5;
+    const animDelay = Math.random() * 1;
+    star.style.animation = `twinkle ${animDuration}s infinite alternate ${animDelay}s`;
+    
+    skyArea.appendChild(star);
+  }
+
+  function createChoices(correctChar) {
+    choicesArea.innerHTML = '';
+    
+    let dummies = dummyKanaList.filter(c => c !== correctChar);
+    dummies.sort(() => 0.5 - Math.random());
+    
+    let options = [correctChar, dummies[0], dummies[1], dummies[2]];
+    options.sort(() => 0.5 - Math.random());
+    
+    options.forEach(char => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.textContent = char;
+      
+      btn.onclick = () => {
+        if (!isPlaying) return;
+        
+        if (char === correctChar) {
+          showMark('⭕️', '#4CAF50');
+          isPlaying = false;
+          currentLetterIndex++;
+          updateWordDisplay();
+          
+          setTimeout(() => {
+            isPlaying = true;
+            nextLetter();
+          }, 800);
+        } else {
+          btn.classList.add('shake');
+          btn.style.background = 'rgba(244, 67, 54, 0.4)';
+          setTimeout(() => {
+            btn.classList.remove('shake');
+            btn.style.background = 'rgba(0, 0, 0, 0.7)';
+          }, 400);
+        }
+      };
+      choicesArea.appendChild(btn);
+    });
+  }
+
+  function showMark(text, color) {
+    markOverlay.textContent = text;
+    markOverlay.style.color = color;
+    markOverlay.style.textShadow = `0 0 20px ${color}, 0 0 40px #fff`;
+    markOverlay.style.opacity = '1';
+    
+    setTimeout(() => {
+      markOverlay.style.opacity = '0';
+    }, 600);
+  }
+
+  function endGame() {
+    isPlaying = false;
+    clearInterval(timerInterval);
+    document.getElementById('final-word').textContent = currentWord;
+    document.getElementById('final-time').textContent = timeElapsed;
+    endScreen.classList.remove('hidden');
+  }
+</script>
+</body>
+</html>
